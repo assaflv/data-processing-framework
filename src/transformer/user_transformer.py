@@ -1,10 +1,10 @@
-from core.ABC.data_transformer import DataTransformer
-from models.user_model import User
+from core.abstract import DataTransformer
+from models.user_input_model import UserInput
 import uuid
 
 
 class UserTransformer(DataTransformer):
-    def transform(self, data: User):
+    def transform(self, data: UserInput):
         transformed_data = {
             "id": data.id,
             "external_id": str(uuid.uuid4()),

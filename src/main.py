@@ -1,23 +1,37 @@
 from core.data_process_framework import DataProcessFramework
 from readers.json_reader import JSONFileReader
 from transformer.user_transformer import UserTransformer
-from models.user_model import User
+from models.user_input_model import UserInput
 from writers.json_writer import JSONWriter
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,  
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
 
 
 def main():
-    json_reader = JSONFileReader()
+    json_reader = JSONFileReader(json_key="value.item", validation_schema=UserInput)
     user_transformer = UserTransformer()
-    json_writer = JSONWriter()
+    json_writer = JSONWriter(
+        destination_path="data/output",
+    )
 
     data_process = DataProcessFramework(
         reader=json_reader,
         transformer=user_transformer,
         writer=json_writer,
-        validation_schema=User,
     )
 
-    data_process.run(source_path="data/fake_users_part_1.json", destination_path="data/")
+    source_paths = [
+        "data/fake_users_part_1.json",
+        "data/fake_users_part_2.json",
+        "data/fake_users_part_3.json",
+        "data/fake_users_part_4.json",
+    ]
+
+    data_process.run(source_paths=source_paths)
 
 
 if __name__ == "__main__":

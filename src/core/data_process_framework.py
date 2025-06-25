@@ -1,10 +1,11 @@
-from typing import Dict, Optional, Type, Union
-from pydantic import BaseModel
-from pydantic_core import ValidationError
-from core.ABC.data_reader import DataReader
-from core.ABC.data_transformer import DataTransformer
-from core.ABC.data_writer import DataWriter
+from concurrent.futures import ThreadPoolExecutor
+from queue import Queue
+import time
+
+
 import logging
+
+from core.abstract import DataReader, DataTransformer, DataWriter
 
 
 class DataProcessFramework:
@@ -13,10 +14,8 @@ class DataProcessFramework:
         reader: DataReader,
         transformer: DataTransformer,
         writer: DataWriter,
-        validation_schema: Optional[Type[BaseModel]] = None,
-        batch_size: int = 1000,
-        output_pattern: str = "results_batch_{counter}",
-        single_batch_filename: str = "results",
+        batch_size: int = 987,
+        max_workers: int = 4,
     ):
         if not isinstance(reader, DataReader):
             raise TypeError("reader must be an instance of DataReader")
@@ -28,46 +27,54 @@ class DataProcessFramework:
         self.reader = reader
         self.transformer = transformer
         self.writer = writer
-        self.schema = validation_schema
         self.batch_size = batch_size
-        self.output_pattern = f"{output_pattern}.json"
-        self.single_batch_filename = f"{single_batch_filename}.json"
+        self.max_workers = max_workers
 
-    def run(self, source_path: str, destination_path: str):
-        """Run the data processing pipeline."""
+    def run(self, source_paths: list[str]):
+        # Ensure that in the worst case all the reader threads can fill up to one full batch before the writer thread has a chance to pull anything.
+        data_queue = Queue(maxsize=self.batch_size * self.max_workers)
+        reader_count = len(source_paths)
+        with ThreadPoolExecutor(max_workers=self.max_workers + 1) as executor:
+            executor.submit(self._writer, data_queue, reader_count)
 
-        data = self.reader.read(source_path)
-        batch_counter = 0
-        transformed_items = []
-        for item in data:
-            if self.schema:
-                try:
-                    processed_item = self.schema(**item)
-                except ValidationError as e:
-                    print(f"Validation error for item {item}: {e}")
-                    continue
-            else:
-                processed_item = item
+            for path in source_paths:
+                executor.submit(self._reader, path, data_queue)
 
-            transformed_data = self.transformer.transform(processed_item)
+    def _reader(self, path, q: Queue):
+        try:
+            logging.info(f"[{time.time()}] Reader started for {path}")
+            for raw_item in self.reader.read(path):
+                item = self.transformer.transform(raw_item)
+                if item is not None:
+                    q.put(item)
+            logging.info(f"[{time.time()}] Reader finished for {path}")
 
-            transformed_items.append(transformed_data)
+        except Exception as e:
+            logging.error(f"[{time.time()}] Error in reader for {path}: {e}")
+        finally:
+            q.put(None)
 
-            if len(transformed_items) >= self.batch_size:
-                self._write(transformed_items, batch_counter)
+    def _writer(self, q: Queue, reader_count: int):
+        logging.info(f"[{time.time()}] Writer started")
+        batch = []
+        batch_id = 0
+        done_readers = 0
 
-                batch_counter += 1
-                transformed_items = []
-        if transformed_items:
-            self._write(transformed_items, batch_counter, one_batch_flag=(batch_counter == 0))
+        while done_readers < reader_count:
+            item = q.get()
+            if item is None:
+                done_readers += 1
+                continue
 
-    def _write(self, data: Union[Dict, Type[BaseModel]], counter: int, one_batch_flag: bool = False):
-        output_file = self.single_batch_filename if one_batch_flag else self.output_pattern.format(counter=counter)
-        self.writer.write(
-            data,
-            output_file,
-        )
+            batch.append(item)
+            if len(batch) >= self.batch_size:
+                logging.info(f"[{time.time()}] Writing batch {batch_id} of size {len(batch)}")
+                self.writer.write(batch, batch_id)
+                batch.clear()
+                batch_id += 1
 
-        logging.info(f"writing {len(data)} items to {output_file}")
+        if batch:
+            logging.info(f"[{time.time()}] Writing final batch {batch_id} of size {len(batch)}")
+            self.writer.write(batch, batch_id)
 
-        self.writer.write(data, output_file)
+        logging.info(f"[{time.time()}] Writer finished")

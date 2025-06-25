@@ -11,7 +11,7 @@ class SignInActivity(BaseModel):
     lastSuccessfulSignInRequestId: Optional[str] = None
 
 
-class User(BaseModel):
+class UserInput(BaseModel):
     userPrincipalName: Optional[str] = None
     usageLocation: Optional[str] = None
     mail: Optional[str] = None
@@ -26,4 +26,4 @@ class User(BaseModel):
 
 
 class UsersResponse(BaseModel):
-    value: List[User] = None
+    value: List[UserInput] = None
