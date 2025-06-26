@@ -13,4 +13,3 @@ class JSONWriter(DataWriter):
         path = f"{self.destination_path}/{self.output_pattern.format(counter=batch_id)}.json"
         with open(path, "w") as file:
             json.dump(data, file, indent=4)
-        

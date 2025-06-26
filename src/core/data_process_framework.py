@@ -15,7 +15,7 @@ class DataProcessFramework:
         transformer: DataTransformer,
         writer: DataWriter,
         batch_size: int = 987,
-        max_workers: int = 4,
+        max_workers: int = None,
     ):
         if not isinstance(reader, DataReader):
             raise TypeError("reader must be an instance of DataReader")
@@ -31,9 +31,12 @@ class DataProcessFramework:
         self.max_workers = max_workers
 
     def run(self, source_paths: list[str]):
-        # Ensure that in the worst case all the reader threads can fill up to one full batch before the writer thread has a chance to pull anything.
-        data_queue = Queue(maxsize=self.batch_size * self.max_workers)
+        data_queue = Queue()
         reader_count = len(source_paths)
+
+        if self.max_workers is None:
+            self.max_workers = reader_count
+
         with ThreadPoolExecutor(max_workers=self.max_workers + 1) as executor:
             executor.submit(self._writer, data_queue, reader_count)
 
@@ -42,12 +45,10 @@ class DataProcessFramework:
 
     def _reader(self, path, q: Queue):
         try:
-            logging.info(f"[{time.time()}] Reader started for {path}")
             for raw_item in self.reader.read(path):
                 item = self.transformer.transform(raw_item)
                 if item is not None:
                     q.put(item)
-            logging.info(f"[{time.time()}] Reader finished for {path}")
 
         except Exception as e:
             logging.error(f"[{time.time()}] Error in reader for {path}: {e}")
