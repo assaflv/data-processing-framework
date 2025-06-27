@@ -28,14 +28,17 @@ def test_read_empty_json_key(data_json_file):
 
 
 def test_read_without_validation_schema(data_json_file):
-    data_json_file.write_text('{"items": [{"a": 1}, {"a": 2}]}')
-    reader = JSONFileReader(json_key="items")
+    data_json_file.write_text('{"value": [{"a": 1}, {"a": 2}]}')
+    reader = JSONFileReader(json_key="value.item")
     result = list(reader.read(str(data_json_file)))
-    assert result[0] == [{"a": 1}, {"a": 2}]
+    assert result == [{"a": 1}, {"a": 2}]
 
 
-def test_read_with_validation_schema(data_json_file):
-    data_json_file.write_text('{"items": [{"a": 1}, {"a": 2}, {"a": "bad"}]}')
-    reader = JSONFileReader(json_key="items.item", validation_schema=ItemModel)
-    with pytest.raises(ValueError):
-        list(reader.read(str(data_json_file)))
+def test_read_validation_schema(data_json_file):
+    data_json_file.write_text('{"value": [{"a": 1}, {"a": 2}, {"b": 3}]}')
+    reader = JSONFileReader(json_key="value.item", validation_schema=ItemModel)
+    result = list(reader.read(str(data_json_file)))
+    assert len(result) == 2
+    assert isinstance(result[0], ItemModel)
+    assert result[0].a == 1
+    assert result[1].a == 2

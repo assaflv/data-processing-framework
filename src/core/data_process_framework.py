@@ -7,6 +7,8 @@ import logging
 
 from core.abstract import DataReader, DataTransformer, DataWriter
 
+_sentinel = object()
+
 
 class DataProcessFramework:
     def __init__(
@@ -29,6 +31,7 @@ class DataProcessFramework:
         self.writer = writer
         self.batch_size = batch_size
         self.max_workers = max_workers
+        self.total_writing_items = 0
 
     def run(self, source_paths: list[str]):
         data_queue = Queue()
@@ -46,14 +49,16 @@ class DataProcessFramework:
     def _reader(self, path, q: Queue):
         try:
             for raw_item in self.reader.read(path):
-                item = self.transformer.transform(raw_item)
-                if item is not None:
+                try:
+                    item = self.transformer.transform(raw_item)
                     q.put(item)
+                except Exception as e:
+                    logging.error(f"[{time.time()}] Error transforming item from {path}: {e}")
 
         except Exception as e:
             logging.error(f"[{time.time()}] Error in reader for {path}: {e}")
         finally:
-            q.put(None)
+            q.put(_sentinel)
 
     def _writer(self, q: Queue, reader_count: int):
         logging.info(f"[{time.time()}] Writer started")
@@ -63,19 +68,21 @@ class DataProcessFramework:
 
         while done_readers < reader_count:
             item = q.get()
-            if item is None:
+            if item is _sentinel:
                 done_readers += 1
                 continue
 
             batch.append(item)
             if len(batch) >= self.batch_size:
-                logging.info(f"[{time.time()}] Writing batch {batch_id} of size {len(batch)}")
-                self.writer.write(batch, batch_id)
+                self._write(batch, batch_id)
                 batch.clear()
                 batch_id += 1
 
         if batch:
-            logging.info(f"[{time.time()}] Writing final batch {batch_id} of size {len(batch)}")
-            self.writer.write(batch, batch_id)
+            self._write(batch, batch_id)
+        logging.info(f"[{time.time()}] Writer finished, total items written: {self.total_writing_items}")
 
-        logging.info(f"[{time.time()}] Writer finished")
+    def _write(self, batch: list, batch_id: int):
+        logging.info(f"[{time.time()}] Writing batch {batch_id} of size {len(batch)}")
+        self.writer.write(batch, batch_id)
+        self.total_writing_items += len(batch)

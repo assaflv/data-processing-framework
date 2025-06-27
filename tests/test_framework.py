@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 from core.abstract import DataReader, DataTransformer, DataWriter
 from core.data_process_framework import DataProcessFramework
 
@@ -20,7 +21,7 @@ class DummyWriter(DataWriter):
         self.batches.append((batch_id, list(batch)))
 
 
-def test_data_process_framework_basic(monkeypatch):
+def test_data_process_framework_success():
     reader = DummyReader()
     transformer = DummyTransformer()
     writer = DummyWriter()
@@ -37,3 +38,7 @@ def test_data_process_framework_basic(monkeypatch):
     all_items = [item for batch_id, batch in writer.batches for item in batch]
     assert sorted(all_items) == ["FILEA_ITEM1", "FILEA_ITEM2", "FILEB_ITEM1", "FILEB_ITEM2"]
     assert len(writer.batches) == 2
+
+
+class ItemModel(BaseModel):
+    a: int
