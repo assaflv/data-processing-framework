@@ -77,7 +77,7 @@ Two options:
 ### Prerequisites
 
 *   Python 3.13.5
-*   `uv` installed
+*   [`uv`](https://docs.astral.sh/uv/getting-started/installation/)) installed
 
 ### Setup
 
