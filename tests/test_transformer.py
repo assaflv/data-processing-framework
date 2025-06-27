@@ -21,4 +21,4 @@ def test_user_transformer():
     assert transformed["mail"] == "test@example.com"
     assert transformed["is_enabled"] is True
     assert "external_id" in transformed
-    assert transformed["sign_in_activity"]["last_sign_in_date_time"] == "2023-01-01T12:00:00Z"
+    assert transformed["sign_in_activity"]["last_sign_in"]["date_time"] == "2023-01-01T12:00:00Z"

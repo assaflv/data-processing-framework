@@ -23,10 +23,16 @@ class UserTransformer(DataTransformer):
             return None
 
         return {
-            "last_sign_in_date_time": signInActivity.lastSignInDateTime,
-            "last_sign_in_request_id": signInActivity.lastSignInRequestId,
-            "last_non_interactive_sign_in_date_time": signInActivity.lastNonInteractiveSignInDateTime,
-            "last_non_interactive_sign_in_request_id": signInActivity.lastNonInteractiveSignInRequestId,
-            "last_successful_sign_in_date_time": signInActivity.lastSuccessfulSignInDateTime,
-            "last_successful_sign_in_request_id": signInActivity.lastSuccessfulSignInRequestId,
+            "last_sign_in": {
+                "date_time": signInActivity.lastSignInDateTime,
+                "request_id": signInActivity.lastSignInRequestId,
+            },
+            "last_non_interactive_sign_in": {
+                "date_time": signInActivity.lastNonInteractiveSignInDateTime,
+                "request_id": signInActivity.lastNonInteractiveSignInRequestId,
+            },
+            "last_successful_sign_in": {
+                "date_time": signInActivity.lastSuccessfulSignInDateTime,
+                "request_id": signInActivity.lastSuccessfulSignInRequestId,
+            },
         }

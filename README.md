@@ -45,8 +45,9 @@ To process multiple files efficiently, the framework implements a producer-consu
  
 The `signInActivity` field is stored as a nested JSON object. This design was chosen because:
 
-1. It keeps all related fields for `signInActivity` together in the same JSON structure, making the data more organized.
-2. It allows for easy schema update if new fields related to `signInActivity` are added in the future.
+1. It separates different types of sign-in events into distinct objects for better data clarity.
+2. Each sign-in type contains both `date_time` and `request_id` fields, provide the option to track about the properties of each sign-in type.
+3. Easy schema updates if new sign-in activity types or fields are added in the future.
 
 ## Future Scalability Enhancements
 
