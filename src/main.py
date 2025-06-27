@@ -1,3 +1,4 @@
+import os
 from core.data_process_framework import DataProcessFramework
 from readers.json_reader import JSONFileReader
 from transformer.user_transformer import UserTransformer
@@ -12,10 +13,16 @@ logging.basicConfig(
 
 
 def main():
+    output_path = "data/output"
+    if not os.path.exists(output_path):
+        raise FileNotFoundError(
+            f"Output directory '{output_path}' does not exist. Please create it before running the program."
+        )
+
     json_reader = JSONFileReader(json_key="value.item", validation_schema=UserInput)
     user_transformer = UserTransformer()
     json_writer = JSONWriter(
-        destination_path="data/output",
+        destination_path=output_path,
     )
 
     data_process = DataProcessFramework(

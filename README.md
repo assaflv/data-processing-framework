@@ -110,5 +110,5 @@ The transformed data will be saved in batches to the folder configurated in `des
 
 To run the tests:
 ```
-pytest
+uv run pytest
 ```
